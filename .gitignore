@@ -18,3 +18,5 @@ bin/
 gen/
 out/
 .kotlin/
+server/20260801/config.php
+server/20260801/install.lock

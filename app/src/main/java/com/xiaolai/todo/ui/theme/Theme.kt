@@ -7,31 +7,30 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
-private val WarmOrange = Color(0xFFE07A5F)
-private val DeepBrown = Color(0xFF3D2C29)
-private val Cream = Color(0xFFFFF7F0)
-private val SoftSage = Color(0xFF81B29A)
+private val Pink = Color(0xFFFF6B81)
+private val SoftPinkBg = Color(0xFFFFF7F9)
+private val Ink = Color(0xFF3D2C29)
+private val SoftTeal = Color(0xFF4DB6AC)
 
 private val LightColors = lightColorScheme(
-    primary = WarmOrange,
+    primary = Pink,
     onPrimary = Color.White,
-    secondary = SoftSage,
-    onSecondary = DeepBrown,
-    background = Cream,
-    onBackground = DeepBrown,
+    secondary = SoftTeal,
+    onSecondary = Color.White,
+    background = SoftPinkBg,
+    onBackground = Ink,
     surface = Color.White,
-    onSurface = DeepBrown,
+    onSurface = Ink,
 )
 
 private val DarkColors = darkColorScheme(
-    primary = WarmOrange,
+    primary = Pink,
     onPrimary = Color.White,
-    secondary = SoftSage,
-    onSecondary = DeepBrown,
-    background = DeepBrown,
-    onBackground = Cream,
-    surface = Color(0xFF4A3834),
-    onSurface = Cream,
+    secondary = SoftTeal,
+    background = Color(0xFF2A1F22),
+    onBackground = SoftPinkBg,
+    surface = Color(0xFF3A2C30),
+    onSurface = SoftPinkBg,
 )
 
 @Composable

@@ -1,66 +1,116 @@
 package com.xiaolai.todo.ui
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Alarm
+import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.Checklist
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
-fun AppRoot(
-    todoViewModel: TodoViewModel,
-    launchTarget: LaunchTarget,
-    onLaunchTargetConsumed: () -> Unit = {},
-) {
-    var tab by rememberSaveable { mutableIntStateOf(launchTarget.tab) }
-    var focusComposer by rememberSaveable { mutableStateOf(launchTarget.focusComposer) }
+fun AppRoot(viewModel: BabyViewModel) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    var tab by rememberSaveable { mutableIntStateOf(1) }
 
-    LaunchedEffect(launchTarget) {
-        tab = launchTarget.tab
-        focusComposer = launchTarget.focusComposer
-    }
-
-    Scaffold(
-        bottomBar = {
-            NavigationBar {
-                NavigationBarItem(
-                    selected = tab == 0,
-                    onClick = { tab = 0 },
-                    icon = { Icon(Icons.Default.Checklist, contentDescription = "待办") },
-                    label = { Text("待办") },
-                )
-                NavigationBarItem(
-                    selected = tab == 1,
-                    onClick = { tab = 1 },
-                    icon = { Icon(Icons.Default.Alarm, contentDescription = "提示音") },
-                    label = { Text("提示音") },
-                )
+    when {
+        state.booting -> {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularProgressIndicator()
             }
-        },
-    ) { padding ->
-        when (tab) {
-            0 -> TodoScreen(
-                viewModel = todoViewModel,
-                modifier = Modifier.padding(padding),
-                requestFocusComposer = focusComposer,
-                onFocusComposerHandled = {
-                    focusComposer = false
-                    onLaunchTargetConsumed()
-                },
+        }
+
+        !state.loggedIn -> {
+            LoginScreen(
+                loading = state.loading,
+                message = state.message,
+                onLoginToken = viewModel::loginWithToken,
+                onLoginInvite = viewModel::loginWithInvite,
             )
-            else -> TimerTestScreen(modifier = Modifier.padding(padding))
+        }
+
+        else -> {
+            Scaffold(
+                bottomBar = {
+                    NavigationBar {
+                        NavigationBarItem(
+                            selected = tab == 0,
+                            onClick = { tab = 0 },
+                            icon = { Icon(Icons.Default.AddCircle, contentDescription = null) },
+                            label = { Text("新增") },
+                        )
+                        NavigationBarItem(
+                            selected = tab == 1,
+                            onClick = { tab = 1 },
+                            icon = { Icon(Icons.Default.Home, contentDescription = null) },
+                            label = { Text("首页") },
+                        )
+                        NavigationBarItem(
+                            selected = tab == 2,
+                            onClick = { tab = 2 },
+                            icon = { Icon(Icons.Default.DateRange, contentDescription = null) },
+                            label = { Text("记录") },
+                        )
+                        NavigationBarItem(
+                            selected = tab == 3,
+                            onClick = { tab = 3 },
+                            icon = { Icon(Icons.Default.Checklist, contentDescription = null) },
+                            label = { Text("待办") },
+                        )
+                        NavigationBarItem(
+                            selected = tab == 4,
+                            onClick = { tab = 4 },
+                            icon = { Icon(Icons.Default.Person, contentDescription = null) },
+                            label = { Text("我的") },
+                        )
+                    }
+                },
+            ) { padding ->
+                Box(modifier = Modifier.padding(padding)) {
+                    when (tab) {
+                        0 -> EditorPane(
+                            state = state,
+                            onCreate = { type, payload ->
+                                viewModel.createRecord(type, payload)
+                            },
+                        )
+                        1 -> HomePane(state = state, onRefresh = viewModel::refreshAll)
+                        2 -> TimelinePane(
+                            state = state,
+                            onDateChange = viewModel::setTimelineDate,
+                        )
+                        3 -> TodosPane(
+                            state = state,
+                            onAdd = viewModel::createTodo,
+                            onToggle = viewModel::toggleTodo,
+                        )
+                        else -> ProfilePane(
+                            state = state,
+                            onLogout = viewModel::logout,
+                            onRefresh = viewModel::refreshAll,
+                        )
+                    }
+                }
+            }
         }
     }
 }

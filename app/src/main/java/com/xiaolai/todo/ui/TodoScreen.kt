@@ -52,7 +52,10 @@ import com.xiaolai.todo.data.Todo
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TodoScreen(viewModel: TodoViewModel) {
+fun TodoScreen(
+    viewModel: TodoViewModel,
+    modifier: Modifier = Modifier,
+) {
     val todos by viewModel.todos.collectAsStateWithLifecycle()
     var draft by rememberSaveable { mutableStateOf("") }
 
@@ -62,6 +65,7 @@ fun TodoScreen(viewModel: TodoViewModel) {
     }
 
     Scaffold(
+        modifier = modifier,
         topBar = {
             TopAppBar(
                 title = {

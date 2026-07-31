@@ -44,6 +44,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -63,6 +64,7 @@ import com.xiaolai.todo.model.SummaryCounts
 import com.xiaolai.todo.session.EventTypePrefs
 import com.xiaolai.todo.session.FormulaFavoritesPrefs
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -636,12 +638,28 @@ fun AgeCalendarPane(
 ) {
     BackHandler(onBack = onBack)
     val rows = remember(birthday) { buildAgeTableRows(birthday) }
+    val todayIndex = remember(rows) { rows.indexOfFirst { it.isToday } }
     val listState = rememberLazyListState()
-    LaunchedEffect(rows.size) {
-        if (rows.isNotEmpty()) {
-            listState.scrollToItem(rows.lastIndex.coerceAtLeast(0))
+    val scope = rememberCoroutineScope()
+    var showSearch by remember { mutableStateOf(false) }
+    var searchInput by remember { mutableStateOf("") }
+    var searchError by remember { mutableStateOf<String?>(null) }
+    var didInitialScroll by remember { mutableStateOf(false) }
+
+    fun jumpToIndex(index: Int) {
+        if (index !in rows.indices) return
+        scope.launch {
+            listState.animateScrollToItem(index)
         }
     }
+
+    LaunchedEffect(rows, todayIndex) {
+        if (!didInitialScroll && todayIndex >= 0) {
+            listState.scrollToItem(todayIndex)
+            didInitialScroll = true
+        }
+    }
+
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
             modifier = Modifier
@@ -657,12 +675,42 @@ fun AgeCalendarPane(
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
-                    if (birthday.isBlank()) "未设置生日" else "生日 $birthday",
+                    if (birthday.isBlank()) "未设置生日" else "生日 $birthday · 出生当天算第 1 天",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                 )
             }
         }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            OutlinedButton(
+                onClick = { jumpToIndex(0) },
+                enabled = rows.isNotEmpty(),
+                modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+            ) { Text("到顶") }
+            Button(
+                onClick = { if (todayIndex >= 0) jumpToIndex(todayIndex) },
+                enabled = todayIndex >= 0,
+                modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+            ) { Text("今天") }
+            OutlinedButton(
+                onClick = {
+                    searchInput = ""
+                    searchError = null
+                    showSearch = true
+                },
+                enabled = rows.isNotEmpty(),
+                modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+            ) { Text("搜索") }
+        }
+        Spacer(modifier = Modifier.height(8.dp))
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -685,19 +733,90 @@ fun AgeCalendarPane(
                 verticalArrangement = Arrangement.spacedBy(0.dp),
             ) {
                 items(rows, key = { it.dateKey }) { row ->
+                    val bg = if (row.isToday) {
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)
+                    } else {
+                        Color.Transparent
+                    }
+                    val weight = if (row.isToday) FontWeight.Bold else FontWeight.Normal
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 10.dp),
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(bg)
+                            .padding(horizontal = 4.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(row.dateKey, modifier = Modifier.weight(1.2f))
-                        Text("${row.dayIndex}天", modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-                        Text(row.monthDayLabel, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
+                        Text(
+                            if (row.isToday) "${row.dateKey} · 今天" else row.dateKey,
+                            modifier = Modifier.weight(1.2f),
+                            fontWeight = weight,
+                            color = if (row.isToday) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                        )
+                        Text(
+                            "第${row.dayIndex}天",
+                            modifier = Modifier.weight(1f),
+                            textAlign = TextAlign.Center,
+                            fontWeight = weight,
+                            color = if (row.isToday) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                        )
+                        Text(
+                            row.monthDayLabel,
+                            modifier = Modifier.weight(1f),
+                            textAlign = TextAlign.End,
+                            fontWeight = weight,
+                            color = if (row.isToday) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                        )
                     }
                 }
             }
         }
+    }
+
+    if (showSearch) {
+        AlertDialog(
+            onDismissRequest = { showSearch = false },
+            title = { Text("搜索日期或天数") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "可输入日期（如 2026-08-01）或天数（如 30 / 第30天）",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
+                    )
+                    OutlinedTextField(
+                        value = searchInput,
+                        onValueChange = {
+                            searchInput = it
+                            searchError = null
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        label = { Text("日期或天数") },
+                        placeholder = { Text("2026-08-01 或 30") },
+                    )
+                    if (searchError != null) {
+                        Text(searchError!!, color = MaterialTheme.colorScheme.error)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val index = findAgeTableIndex(rows, searchInput)
+                        if (index == null) {
+                            searchError = "未找到对应日期或天数"
+                        } else {
+                            showSearch = false
+                            jumpToIndex(index)
+                        }
+                    },
+                ) { Text("跳转") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSearch = false }) { Text("取消") }
+            },
+        )
     }
 }
 
@@ -705,6 +824,7 @@ private data class AgeTableRow(
     val dateKey: String,
     val dayIndex: Int,
     val monthDayLabel: String,
+    val isToday: Boolean,
 )
 
 private fun buildAgeTableRows(birthday: String): List<AgeTableRow> {
@@ -724,21 +844,67 @@ private fun buildAgeTableRows(birthday: String): List<AgeTableRow> {
         set(Calendar.MILLISECOND, 0)
     }
     if (birth.after(today)) return emptyList()
+    val end = (today.clone() as Calendar).apply { add(Calendar.DAY_OF_MONTH, 365) }
+    val todayKey = fmt.format(today.time)
     val rows = mutableListOf<AgeTableRow>()
     val cursor = birth.clone() as Calendar
-    var dayIndex = 0
-    while (!cursor.after(today)) {
+    // 出生当天算第 1 天
+    var dayIndex = 1
+    while (!cursor.after(end)) {
         val (months, days) = calendarAgeMonthsDays(birth, cursor)
+        val dateKey = fmt.format(cursor.time)
         rows += AgeTableRow(
-            dateKey = fmt.format(cursor.time),
+            dateKey = dateKey,
             dayIndex = dayIndex,
             monthDayLabel = "${months}月${days}天",
+            isToday = dateKey == todayKey,
         )
         cursor.add(Calendar.DAY_OF_MONTH, 1)
         dayIndex++
-        if (dayIndex > 5000) break
+        if (dayIndex > 8000) break
     }
     return rows
+}
+
+private fun findAgeTableIndex(rows: List<AgeTableRow>, raw: String): Int? {
+    val query = raw.trim()
+    if (query.isEmpty() || rows.isEmpty()) return null
+
+    val digits = query.filter { it.isDigit() }
+    if (digits.length == 8) {
+        val key = "${digits.substring(0, 4)}-${digits.substring(4, 6)}-${digits.substring(6, 8)}"
+        val idx = rows.indexOfFirst { it.dateKey == key }
+        if (idx >= 0) return idx
+    }
+
+    val normalized = query
+        .replace('/', '-')
+        .replace('.', '-')
+        .replace('年', '-')
+        .replace('月', '-')
+        .replace("日", "")
+        .trim('-')
+    val idxExact = rows.indexOfFirst { it.dateKey == normalized }
+    if (idxExact >= 0) return idxExact
+
+    // 天数：30 / 第30天 / 30天（避免把完整日期当成天数）
+    val dayMatch = Regex("""^(?:第)?\s*(\d{1,4})\s*天?$""").find(query)
+    if (dayMatch != null) {
+        val day = dayMatch.groupValues[1].toIntOrNull()
+        if (day != null) {
+            val idx = rows.indexOfFirst { it.dayIndex == day }
+            if (idx >= 0) return idx
+        }
+    }
+
+    if (digits.length == 4) {
+        val mmdd = "${digits.substring(0, 2)}-${digits.substring(2, 4)}"
+        val idx = rows.indexOfFirst { it.dateKey.endsWith("-$mmdd") }
+        if (idx >= 0) return idx
+    }
+
+    val idxLoose = rows.indexOfFirst { it.dateKey.endsWith(normalized) || it.dateKey.contains(normalized) }
+    return idxLoose.takeIf { it >= 0 }
 }
 
 private fun calendarAgeMonthsDays(birth: Calendar, target: Calendar): Pair<Int, Int> {

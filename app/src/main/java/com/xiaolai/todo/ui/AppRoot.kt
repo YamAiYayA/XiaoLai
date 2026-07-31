@@ -109,6 +109,7 @@ fun AppRoot(viewModel: BabyViewModel) {
                         1 -> TimelinePane(
                             state = state,
                             onDateChange = viewModel::setTimelineDate,
+                            onDeleteRecord = viewModel::deleteRecord,
                         )
                         2 -> EditorPane(
                             state = state,

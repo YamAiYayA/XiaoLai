@@ -228,6 +228,30 @@ class BabyViewModel(
         }
     }
 
+    fun deleteRecord(id: String) {
+        val token = session.accessToken
+        if (token.isBlank()) return
+        viewModelScope.launch {
+            // Optimistic remove for snappy swipe UX.
+            _state.update { state ->
+                state.copy(
+                    timeline = state.timeline.filterNot { it.id == id },
+                    dashboard = state.dashboard.copy(
+                        recentRecords = state.dashboard.recentRecords.filterNot { it.id == id },
+                    ),
+                )
+            }
+            runCatching {
+                withContext(Dispatchers.IO) { api.deleteRecord(token, id) }
+            }.onSuccess {
+                refreshAll()
+            }.onFailure { error ->
+                refreshAll()
+                _state.update { it.copy(message = error.message ?: "删除失败") }
+            }
+        }
+    }
+
     class Factory(private val app: Application) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {

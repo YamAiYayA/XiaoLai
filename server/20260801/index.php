@@ -108,7 +108,7 @@ function summarize_records(array $records): array
         if ($type === 'feeding_formula') {
             $summary['formulaFeedCount']++;
             $summary['formulaAmountTotal'] += (float)($payload['amountMl'] ?? 0);
-        } elseif ($type === 'feeding_breast') {
+        } elseif ($type === 'feeding_breast' || $type === 'feeding_warm_breast') {
             $summary['breastFeedCount']++;
         } elseif ($type === 'poop') {
             $summary['poopCount']++;

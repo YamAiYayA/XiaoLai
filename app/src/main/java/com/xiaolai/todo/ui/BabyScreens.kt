@@ -2,10 +2,13 @@ package com.xiaolai.todo.ui
 
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -28,8 +31,11 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -41,8 +47,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.xiaolai.todo.model.BabyRecord
@@ -50,6 +58,7 @@ import com.xiaolai.todo.model.BabyTodo
 import com.xiaolai.todo.model.EventTypeOption
 import com.xiaolai.todo.model.EventTypes
 import com.xiaolai.todo.model.SummaryCounts
+import com.xiaolai.todo.session.EventTypePrefs
 import kotlinx.coroutines.delay
 import org.json.JSONObject
 import java.text.SimpleDateFormat
@@ -108,7 +117,11 @@ fun HomePane(
                 Button(onClick = onOpenEditor) { Text("去新增页") }
             }
             Text("默认使用当前时间", style = MaterialTheme.typography.bodySmall)
-            FlowRowChips(EventTypes.all.filter { !it.needsNote && !it.needsCustom }) { option ->
+            val typePrefs = EventTypePrefs(LocalContext.current)
+            FlowRowChips(
+                EventTypes.visible(typePrefs.hiddenTypes())
+                    .filter { !it.needsNote && !it.needsCustom },
+            ) { option ->
                 onQuickAdd(option.value)
             }
         }
@@ -171,6 +184,10 @@ fun EditorPane(
     var pendingInstant by remember { mutableStateOf<EventTypeOption?>(null) }
     var showSuccess by remember { mutableStateOf(false) }
     var successText by remember { mutableStateOf("记录已保存") }
+    val typePrefs = remember { EventTypePrefs(context) }
+    var hiddenTypes by remember { mutableStateOf(typePrefs.hiddenTypes()) }
+    var pendingHide by remember { mutableStateOf<EventTypeOption?>(null) }
+    val visibleTypes = remember(hiddenTypes) { EventTypes.visible(hiddenTypes) }
 
     var occurredAt by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var followNow by remember { mutableStateOf(true) }
@@ -345,12 +362,18 @@ fun EditorPane(
 
         item {
             Text("记录类型", fontWeight = FontWeight.SemiBold)
+            Text(
+                "长按可隐藏阶段性不用的类型",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+            )
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                EventTypes.all.forEach { option ->
-                    FilterChip(
+                visibleTypes.forEach { option ->
+                    EventTypeChip(
+                        option = option,
                         selected = selected.value == option.value,
                         onClick = {
                             selected = option
@@ -358,9 +381,15 @@ fun EditorPane(
                                 pendingInstant = option
                             }
                         },
-                        label = { Text(option.label) },
+                        onLongClick = { pendingHide = option },
                     )
                 }
+            }
+            if (hiddenTypes.isNotEmpty()) {
+                TextButton(onClick = {
+                    typePrefs.restoreAll()
+                    hiddenTypes = emptySet()
+                }) { Text("恢复已隐藏类型") }
             }
         }
 
@@ -505,7 +534,7 @@ fun EditorPane(
                     forehead = ""
                     chest = ""
                     followNow = true
-                    selected = EventTypes.all.first()
+                    selected = visibleTypes.firstOrNull() ?: EventTypes.all.first()
                 },
                 modifier = Modifier.fillMaxWidth(),
             ) { Text("清空重写") }
@@ -536,6 +565,30 @@ fun EditorPane(
             text = { Text(successText) },
             confirmButton = {
                 TextButton(onClick = { showSuccess = false }) { Text("好的") }
+            },
+        )
+    }
+
+    pendingHide?.let { option ->
+        AlertDialog(
+            onDismissRequest = { pendingHide = null },
+            title = { Text("隐藏「${option.label}」？") },
+            text = { Text("适合阶段性不用的类型。可在下方点「恢复已隐藏类型」。") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        typePrefs.hide(option.value)
+                        hiddenTypes = typePrefs.hiddenTypes()
+                        if (selected.value == option.value) {
+                            selected = EventTypes.visible(hiddenTypes).firstOrNull()
+                                ?: EventTypes.all.first()
+                        }
+                        pendingHide = null
+                    },
+                ) { Text("隐藏") }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingHide = null }) { Text("取消") }
             },
         )
     }
@@ -578,6 +631,7 @@ private fun TimeSelectCard(
 fun TimelinePane(
     state: BabyUiState,
     onDateChange: (String) -> Unit,
+    onDeleteRecord: (String) -> Unit,
 ) {
     var viewMode by rememberSaveable { mutableStateOf("day") }
     val cal = remember { Calendar.getInstance() }
@@ -632,14 +686,25 @@ fun TimelinePane(
                 StatCard("总记录", "${summary.totalCount}条", Modifier.weight(1f))
             }
         }
+        item {
+            Text(
+                "列表项从右向左滑可删除",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
+            )
+        }
         if (viewMode == "day") {
             if (state.timeline.isEmpty()) {
                 item { EmptyCard("这一天还没有记录", "去新增页记一条吧。") }
             } else {
-                items(state.timeline, key = { it.id }) { RecordRow(it) }
+                items(state.timeline, key = { it.id }) { record ->
+                    SwipeDeleteRecordRow(record = record, onDelete = { onDeleteRecord(record.id) })
+                }
             }
         } else {
-            items(state.dashboard.recentRecords, key = { it.id }) { RecordRow(it) }
+            items(state.dashboard.recentRecords, key = { it.id }) { record ->
+                SwipeDeleteRecordRow(record = record, onDelete = { onDeleteRecord(record.id) })
+            }
         }
     }
 }
@@ -808,6 +873,42 @@ private fun EmptyCard(title: String, desc: String) {
 }
 
 @Composable
+private fun SwipeDeleteRecordRow(
+    record: BabyRecord,
+    onDelete: () -> Unit,
+) {
+    val dismissState = rememberSwipeToDismissBoxState(
+        confirmValueChange = { value ->
+            if (value == SwipeToDismissBoxValue.EndToStart) {
+                onDelete()
+                true
+            } else {
+                false
+            }
+        },
+    )
+    SwipeToDismissBox(
+        state = dismissState,
+        enableDismissFromStartToEnd = false,
+        enableDismissFromEndToStart = true,
+        backgroundContent = {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color(0xFFE85D75))
+                    .padding(horizontal = 20.dp),
+                contentAlignment = Alignment.CenterEnd,
+            ) {
+                Text("删除", color = Color.White, fontWeight = FontWeight.Bold)
+            }
+        },
+    ) {
+        RecordRow(record)
+    }
+}
+
+@Composable
 private fun RecordRow(record: BabyRecord) {
     Column(
         modifier = Modifier
@@ -826,6 +927,38 @@ private fun RecordRow(record: BabyRecord) {
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
         )
     }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun EventTypeChip(
+    option: EventTypeOption,
+    selected: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+) {
+    val bg = if (selected) {
+        MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
+    } else {
+        MaterialTheme.colorScheme.surface
+    }
+    val border = if (selected) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.18f)
+    }
+    Text(
+        text = option.label,
+        modifier = Modifier
+            .clip(RoundedCornerShape(999.dp))
+            .border(1.dp, border, RoundedCornerShape(999.dp))
+            .background(bg)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+        textAlign = TextAlign.Center,
+    )
 }
 
 @Composable
@@ -889,7 +1022,9 @@ private fun buildRealtimeSummary(state: BabyUiState): RealtimeSummary {
         "睡眠状态 未在睡觉"
     }
     val lastFeed = records.firstOrNull {
-        it.eventType == "feeding_formula" || it.eventType == "feeding_breast"
+        it.eventType == "feeding_formula" ||
+            it.eventType == "feeding_breast" ||
+            it.eventType == "feeding_warm_breast"
     }
     val feedLabel = if (lastFeed == null) {
         "距离上次吃奶/母乳 暂无记录"
@@ -947,7 +1082,7 @@ private fun summarize(records: List<BabyRecord>): SummaryCounts {
                 formulaCount++
                 formulaAmount += record.payload.optDouble("amountMl")
             }
-            "feeding_breast" -> breastCount++
+            "feeding_breast", "feeding_warm_breast" -> breastCount++
             "poop" -> poop++
             "care", "butt_clean", "pee_clean" -> care++
             "bath" -> bath++

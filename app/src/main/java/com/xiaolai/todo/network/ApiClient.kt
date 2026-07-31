@@ -56,6 +56,11 @@ class ApiClient(
         return (0 until arr.length()).map { BabyRecord.fromJson(arr.getJSONObject(it)) }
     }
 
+    fun deleteRecord(token: String, id: String) {
+        val body = JSONObject().put("id", id)
+        post("records/delete", body, token)
+    }
+
     fun createRecord(
         token: String,
         babyId: String,

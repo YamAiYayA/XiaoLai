@@ -15,7 +15,8 @@ data class EventTypeOption(
 object EventTypes {
     val all = listOf(
         EventTypeOption("feeding_formula", "奶粉", needsAmount = true),
-        EventTypeOption("feeding_breast", "母乳", needsSide = true),
+        EventTypeOption("feeding_breast", "亲喂", needsSide = true),
+        EventTypeOption("feeding_warm_breast", "热母乳", needsAmount = true),
         EventTypeOption("sleep_start", "睡觉", shortLabel = "睡", instantConfirm = true),
         EventTypeOption("sleep_end", "醒来", shortLabel = "醒", instantConfirm = true),
         EventTypeOption("poop", "拉粑粑", shortLabel = "便便", instantConfirm = true),
@@ -36,17 +37,21 @@ object EventTypes {
 
     fun labelOf(type: String): String = of(type).label
 
+    fun visible(hidden: Set<String>): List<EventTypeOption> =
+        all.filter { it.value !in hidden }
+
     fun summarize(record: BabyRecord): String {
         val payload = record.payload
         return when (record.eventType) {
             "feeding_formula" -> "奶粉 ${payload.optInt("amountMl")}ml"
+            "feeding_warm_breast" -> "热母乳 ${payload.optInt("amountMl")}ml"
             "feeding_breast" -> {
                 val side = when (payload.optString("side")) {
                     "left" -> "左侧"
                     "right" -> "右侧"
                     else -> payload.optString("side")
                 }
-                "母乳 $side ${payload.optInt("durationMin")}分钟"
+                "亲喂 $side ${payload.optInt("durationMin")}分钟"
             }
             "sleep_start" -> "开始睡觉"
             "sleep_end" -> "醒来"

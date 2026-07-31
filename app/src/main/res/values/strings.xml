@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">小来待办</string>
+    <string name="widget_name">小来待办</string>
+    <string name="widget_description">在桌面查看和勾选待办</string>
+    <string name="widget_empty">暂无待办，打开 App 添加</string>
+    <string name="widget_open_app">打开 App</string>
+</resources>

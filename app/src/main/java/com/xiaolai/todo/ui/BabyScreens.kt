@@ -1,6 +1,9 @@
 package com.xiaolai.todo.ui
 
+import android.app.DatePickerDialog
+import android.app.TimePickerDialog
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -38,6 +41,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
@@ -72,7 +76,7 @@ fun HomePane(
     ) {
         item {
             Text(
-                text = baby?.nickname ?: "宝宝记录",
+                text = baby?.nickname?.let { "${it}养成记" } ?: "妍妍养成记",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
             )
@@ -143,8 +147,15 @@ fun HomePane(
 @Composable
 fun EditorPane(
     state: BabyUiState,
-    onCreate: (eventType: String, payload: JSONObject, occurredAt: Long, dateKey: String) -> Unit,
+    onCreate: (
+        eventType: String,
+        payload: JSONObject,
+        occurredAt: Long,
+        dateKey: String,
+        onDone: () -> Unit,
+    ) -> Unit,
 ) {
+    val context = LocalContext.current
     var selected by remember { mutableStateOf(EventTypes.all.first()) }
     var amount by rememberSaveable { mutableStateOf("40") }
     var side by rememberSaveable { mutableStateOf("left") }
@@ -158,6 +169,8 @@ fun EditorPane(
     }
     var showMoreAmounts by remember { mutableStateOf(false) }
     var pendingInstant by remember { mutableStateOf<EventTypeOption?>(null) }
+    var showSuccess by remember { mutableStateOf(false) }
+    var successText by remember { mutableStateOf("记录已保存") }
 
     var occurredAt by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var followNow by remember { mutableStateOf(true) }
@@ -176,6 +189,47 @@ fun EditorPane(
     val timeLabel = SimpleDateFormat("HH:mm:ss", Locale.CHINA).format(Date(displayTs))
     val summary = remember(state.dashboard.recentRecords, nowTick, state.context?.baby) {
         buildRealtimeSummary(state)
+    }
+
+    fun openDatePicker() {
+        val cal = Calendar.getInstance().apply { timeInMillis = displayTs }
+        DatePickerDialog(
+            context,
+            { _, year, month, day ->
+                followNow = false
+                val next = Calendar.getInstance().apply {
+                    timeInMillis = occurredAt
+                    set(Calendar.YEAR, year)
+                    set(Calendar.MONTH, month)
+                    set(Calendar.DAY_OF_MONTH, day)
+                }
+                occurredAt = next.timeInMillis
+            },
+            cal.get(Calendar.YEAR),
+            cal.get(Calendar.MONTH),
+            cal.get(Calendar.DAY_OF_MONTH),
+        ).show()
+    }
+
+    fun openTimePicker() {
+        val cal = Calendar.getInstance().apply { timeInMillis = displayTs }
+        TimePickerDialog(
+            context,
+            { _, hour, minute ->
+                followNow = false
+                val next = Calendar.getInstance().apply {
+                    timeInMillis = occurredAt
+                    set(Calendar.HOUR_OF_DAY, hour)
+                    set(Calendar.MINUTE, minute)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }
+                occurredAt = next.timeInMillis
+            },
+            cal.get(Calendar.HOUR_OF_DAY),
+            cal.get(Calendar.MINUTE),
+            true,
+        ).show()
     }
 
     fun save(option: EventTypeOption = selected, instant: Boolean = false) {
@@ -198,11 +252,14 @@ fun EditorPane(
         }
         val ts = if (instant || followNow) System.currentTimeMillis() else occurredAt
         val key = SimpleDateFormat("yyyy-MM-dd", Locale.CHINA).format(Date(ts))
-        onCreate(option.value, payload, ts, key)
-        pendingInstant = null
-        if (!instant) {
-            note = ""
-            customLabel = ""
+        onCreate(option.value, payload, ts, key) {
+            successText = "${option.label}已保存"
+            showSuccess = true
+            pendingInstant = null
+            if (!instant) {
+                note = ""
+                customLabel = ""
+            }
         }
     }
 
@@ -236,25 +293,51 @@ fun EditorPane(
 
         item {
             SurfaceCard {
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(dateKey, fontWeight = FontWeight.SemiBold)
-                        Text(timeLabel, style = MaterialTheme.typography.titleMedium)
+                Text("记录时间", fontWeight = FontWeight.SemiBold)
+                Text(
+                    if (followNow) "跟随当前时间（点日期/时间可手动改）" else "已手动设定时间",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.Top,
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1.2f),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        TimeSelectCard(
+                            label = "日期",
+                            value = dateKey,
+                            onClick = { openDatePicker() },
+                        )
+                        TimeSelectCard(
+                            label = "时间",
+                            value = timeLabel,
+                            onClick = { openTimePicker() },
+                        )
                     }
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
                         listOf(1, 3, 5, 10, 15).forEach { minutes ->
-                            AssistChip(
+                            OutlinedButton(
                                 onClick = {
                                     followNow = false
                                     occurredAt = System.currentTimeMillis() - minutes * 60_000L
                                 },
-                                label = { Text("${minutes}分钟前") },
-                            )
+                                modifier = Modifier.fillMaxWidth(),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+                            ) { Text("${minutes}分钟前") }
                         }
-                        AssistChip(
+                        Button(
                             onClick = { followNow = true },
-                            label = { Text("现在") },
-                        )
+                            modifier = Modifier.fillMaxWidth(),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+                        ) { Text("现在") }
                     }
                 }
             }
@@ -443,6 +526,50 @@ fun EditorPane(
             dismissButton = {
                 TextButton(onClick = { pendingInstant = null }) { Text("取消（进入详情）") }
             },
+        )
+    }
+
+    if (showSuccess) {
+        AlertDialog(
+            onDismissRequest = { showSuccess = false },
+            title = { Text("保存成功") },
+            text = { Text(successText) },
+            confirmButton = {
+                TextButton(onClick = { showSuccess = false }) { Text("好的") }
+            },
+        )
+    }
+}
+
+@Composable
+private fun TimeSelectCard(
+    label: String,
+    value: String,
+    onClick: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
+                shape = RoundedCornerShape(14.dp),
+            )
+            .background(MaterialTheme.colorScheme.background.copy(alpha = 0.55f))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+    ) {
+        Text(
+            label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
+        )
+        Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        Text(
+            "点击修改",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.primary,
         )
     }
 }

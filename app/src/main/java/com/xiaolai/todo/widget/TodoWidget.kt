@@ -120,7 +120,7 @@ private fun WidgetContent(todos: List<Todo>) {
             .clickable(actionStartActivity<MainActivity>()),
     ) {
         Text(
-            text = "小来待办",
+            text = "妍妍养成记",
             style = TextStyle(
                 color = ink,
                 fontSize = 16.sp,

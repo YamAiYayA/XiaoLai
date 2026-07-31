@@ -38,7 +38,7 @@ fun LoginScreen(
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text("宝宝记录", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+        Text("妍妍养成记", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
         Text(
             "小程序数据导入服务器后，用口令进入。爸爸/妈妈各有一个口令。",
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),

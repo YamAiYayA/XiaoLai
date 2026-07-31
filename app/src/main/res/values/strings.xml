@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">宝宝记录</string>
-    <string name="widget_name">宝宝记录</string>
-    <string name="widget_description">桌面查看待办（本地练手组件）</string>
+    <string name="app_name">妍妍养成记</string>
+    <string name="widget_name">妍妍养成记</string>
+    <string name="widget_description">桌面查看待办快捷入口</string>
     <string name="widget_empty">暂无待办</string>
     <string name="widget_open_app">打开 App</string>
 

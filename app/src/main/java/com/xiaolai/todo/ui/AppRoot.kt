@@ -112,12 +112,13 @@ fun AppRoot(viewModel: BabyViewModel) {
                         )
                         2 -> EditorPane(
                             state = state,
-                            onCreate = { type, payload, occurredAt, dateKey ->
+                            onCreate = { type, payload, occurredAt, dateKey, onDone ->
                                 viewModel.createRecord(
                                     eventType = type,
                                     payload = payload,
                                     occurredAt = occurredAt,
                                     dateKey = dateKey,
+                                    onDone = onDone,
                                 )
                             },
                         )

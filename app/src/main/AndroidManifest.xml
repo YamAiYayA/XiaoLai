@@ -27,9 +27,8 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
             <intent-filter>
-                <action android:name="com.xiaolai.todo.action.NEW_TODO" />
-                <action android:name="com.xiaolai.todo.action.OPEN_TODOS" />
-                <action android:name="com.xiaolai.todo.action.OPEN_TIMER" />
+                <action android:name="com.xiaolai.todo.action.QUICK_FEED" />
+                <action android:name="com.xiaolai.todo.action.QUICK_DIAPER" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
             <meta-data

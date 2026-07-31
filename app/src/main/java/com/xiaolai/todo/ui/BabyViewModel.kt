@@ -11,7 +11,9 @@ import com.xiaolai.todo.model.BabyTodo
 import com.xiaolai.todo.model.DashboardData
 import com.xiaolai.todo.model.SummaryCounts
 import com.xiaolai.todo.network.ApiClient
+import com.xiaolai.todo.session.LastFeedStore
 import com.xiaolai.todo.session.SessionStore
+import com.xiaolai.todo.widget.TodoWidget
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -60,6 +62,7 @@ class BabyViewModel(
             runCatching {
                 withContext(Dispatchers.IO) { api.bootstrap(token) }
             }.onSuccess { context ->
+                session.babyId = context.baby?.id.orEmpty()
                 _state.update {
                     it.copy(booting = false, loggedIn = true, context = context, message = "")
                 }
@@ -117,7 +120,11 @@ class BabyViewModel(
 
     fun logout() {
         session.clear()
+        LastFeedStore(getApplication()).clear()
         _state.value = BabyUiState(booting = false, loggedIn = false)
+        viewModelScope.launch {
+            runCatching { TodoWidget.updateAll(getApplication()) }
+        }
     }
 
     fun refreshAll() {
@@ -142,6 +149,7 @@ class BabyViewModel(
                         todos = todos,
                     )
                 }
+                syncLastFeedWidget(dash.recentRecords + timeline)
             }.onFailure { error ->
                 _state.update {
                     it.copy(loading = false, message = error.message ?: "刷新失败")
@@ -249,6 +257,17 @@ class BabyViewModel(
                 refreshAll()
                 _state.update { it.copy(message = error.message ?: "删除失败") }
             }
+        }
+    }
+
+    private fun syncLastFeedWidget(records: List<BabyRecord>) {
+        val snapshot = LastFeedStore.pickLatest(records)
+        val store = LastFeedStore(getApplication())
+        if (snapshot != null) {
+            store.save(snapshot)
+        }
+        viewModelScope.launch {
+            runCatching { TodoWidget.updateAll(getApplication()) }
         }
     }
 

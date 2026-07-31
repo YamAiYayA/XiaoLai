@@ -10,10 +10,10 @@
    - 打开 https://api.guoziai.com/20260801/install.php 导入 `guozy`
 
 2. 安装 App
-   - 下载: `dist/XBB0.5.4.apk`
+   - 下载: `dist/XBB0.5.5.apk`
    - 用安装页生成的爸爸/妈妈 token 登录
    - 或邀请码 + 称呼
 
 ## APK 命名规则
 
-每次更新产物命名为：`XBB` + 版本号，例如 `XBB0.5.4.apk`
+每次更新产物命名为：`XBB` + 版本号，例如 `XBB0.5.5.apk`

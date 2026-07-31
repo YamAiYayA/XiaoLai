@@ -16,6 +16,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -24,14 +25,41 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.xiaolai.todo.ShortcutActions
 import org.json.JSONObject
 
 @Composable
-fun AppRoot(viewModel: BabyViewModel) {
+fun AppRoot(
+    viewModel: BabyViewModel,
+    shortcutAction: String? = null,
+    onShortcutConsumed: () -> Unit = {},
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     // Match miniprogram tab order: 首页 / 记录 / 新增 / 待办 / 我的
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var showAgeTable by rememberSaveable { mutableStateOf(false) }
+    var editorPreset by rememberSaveable { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(shortcutAction, state.loggedIn, state.booting) {
+        if (shortcutAction == null || state.booting || !state.loggedIn) return@LaunchedEffect
+        when (shortcutAction) {
+            ShortcutActions.QUICK_FEED -> {
+                showAgeTable = false
+                editorPreset = "feeding_formula"
+                tab = 2
+                onShortcutConsumed()
+            }
+            ShortcutActions.QUICK_DIAPER -> {
+                showAgeTable = false
+                viewModel.createRecord(
+                    eventType = "care",
+                    payload = JSONObject().put("note", "更换尿不湿"),
+                )
+                tab = 0
+                onShortcutConsumed()
+            }
+        }
+    }
 
     when {
         state.booting -> {
@@ -124,6 +152,8 @@ fun AppRoot(viewModel: BabyViewModel) {
                             )
                             2 -> EditorPane(
                                 state = state,
+                                presetEventType = editorPreset,
+                                onPresetConsumed = { editorPreset = null },
                                 onOpenAgeTable = { showAgeTable = true },
                                 onCreate = { type, payload, occurredAt, dateKey, onDone ->
                                     viewModel.createRecord(

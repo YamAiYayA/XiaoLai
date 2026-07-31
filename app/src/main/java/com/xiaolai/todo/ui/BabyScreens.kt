@@ -165,6 +165,8 @@ fun HomePane(
 @Composable
 fun EditorPane(
     state: BabyUiState,
+    presetEventType: String? = null,
+    onPresetConsumed: () -> Unit = {},
     onOpenAgeTable: () -> Unit,
     onCreate: (
         eventType: String,
@@ -194,6 +196,14 @@ fun EditorPane(
     var hiddenTypes by remember { mutableStateOf(typePrefs.hiddenTypes()) }
     var pendingHide by remember { mutableStateOf<EventTypeOption?>(null) }
     val visibleTypes = remember(hiddenTypes) { EventTypes.visible(hiddenTypes) }
+
+    LaunchedEffect(presetEventType) {
+        val type = presetEventType ?: return@LaunchedEffect
+        val option = EventTypes.visible(hiddenTypes).firstOrNull { it.value == type }
+            ?: EventTypes.of(type)
+        selected = option
+        onPresetConsumed()
+    }
 
     var occurredAt by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var followNow by remember { mutableStateOf(true) }

@@ -166,7 +166,13 @@ class BabyViewModel(
         }
     }
 
-    fun createRecord(eventType: String, payload: JSONObject, onDone: () -> Unit = {}) {
+    fun createRecord(
+        eventType: String,
+        payload: JSONObject,
+        occurredAt: Long = System.currentTimeMillis(),
+        dateKey: String = todayKey(),
+        onDone: () -> Unit = {},
+    ) {
         val token = session.accessToken
         val babyId = _state.value.context?.baby?.id.orEmpty()
         if (token.isBlank() || babyId.isBlank()) return
@@ -178,8 +184,8 @@ class BabyViewModel(
                         token = token,
                         babyId = babyId,
                         eventType = eventType,
-                        dateKey = todayKey(),
-                        occurredAt = System.currentTimeMillis(),
+                        dateKey = dateKey,
+                        occurredAt = occurredAt,
                         payload = payload,
                     )
                 }

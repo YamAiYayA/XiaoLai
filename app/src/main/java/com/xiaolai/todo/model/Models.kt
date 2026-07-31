@@ -165,29 +165,3 @@ data class BabyTodo(
     }
 }
 
-data class EventTypeOption(
-    val value: String,
-    val label: String,
-    val needsAmount: Boolean = false,
-    val needsSide: Boolean = false,
-    val needsNote: Boolean = false,
-)
-
-object EventTypes {
-    val quickActions = listOf(
-        EventTypeOption("feeding_formula", "奶粉", needsAmount = true),
-        EventTypeOption("feeding_breast", "母乳", needsSide = true),
-        EventTypeOption("sleep_start", "睡觉"),
-        EventTypeOption("sleep_end", "醒来"),
-        EventTypeOption("poop", "拉粑粑"),
-        EventTypeOption("care", "护理"),
-        EventTypeOption("butt_clean", "洗屁股"),
-        EventTypeOption("gas_exercise", "排气操"),
-        EventTypeOption("jaundice_check", "测黄疸"),
-        EventTypeOption("bath", "洗澡"),
-        EventTypeOption("note", "备注", needsNote = true),
-    )
-
-    fun labelOf(type: String): String =
-        quickActions.firstOrNull { it.value == type }?.label ?: type
-}

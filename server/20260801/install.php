@@ -28,8 +28,8 @@ function random_token(): string
 $defaults = [
     'db_host' => '127.0.0.1',
     'db_port' => '3306',
-    'db_name' => 'GuoZY',
-    'db_user' => 'GuoZY',
+    'db_name' => 'guozy',
+    'db_user' => 'guozy',
     'db_pass' => '',
 ];
 
@@ -210,7 +210,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$done) {
 <body>
   <div class="card">
     <h1>宝宝记录 · 安装导入</h1>
-    <p>会把小程序导出的数据写入 MySQL 库 <b>GuoZY</b>，并生成爸爸/妈妈登录口令。</p>
+    <p>会把小程序导出的数据写入 MySQL 库 <b>guozy</b>，并生成爸爸/妈妈登录口令。</p>
     <?php if ($message): ?><div class="msg"><?= htmlspecialchars($message, ENT_QUOTES, 'UTF-8') ?></div><?php endif; ?>
   </div>
 

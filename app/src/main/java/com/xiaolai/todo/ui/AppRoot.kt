@@ -23,11 +23,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import org.json.JSONObject
 
 @Composable
 fun AppRoot(viewModel: BabyViewModel) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    var tab by rememberSaveable { mutableIntStateOf(1) }
+    // Match miniprogram tab order: 首页 / 记录 / 新增 / 待办 / 我的
+    var tab by rememberSaveable { mutableIntStateOf(0) }
 
     when {
         state.booting -> {
@@ -55,20 +57,20 @@ fun AppRoot(viewModel: BabyViewModel) {
                         NavigationBarItem(
                             selected = tab == 0,
                             onClick = { tab = 0 },
-                            icon = { Icon(Icons.Default.AddCircle, contentDescription = null) },
-                            label = { Text("新增") },
-                        )
-                        NavigationBarItem(
-                            selected = tab == 1,
-                            onClick = { tab = 1 },
                             icon = { Icon(Icons.Default.Home, contentDescription = null) },
                             label = { Text("首页") },
                         )
                         NavigationBarItem(
-                            selected = tab == 2,
-                            onClick = { tab = 2 },
+                            selected = tab == 1,
+                            onClick = { tab = 1 },
                             icon = { Icon(Icons.Default.DateRange, contentDescription = null) },
                             label = { Text("记录") },
+                        )
+                        NavigationBarItem(
+                            selected = tab == 2,
+                            onClick = { tab = 2 },
+                            icon = { Icon(Icons.Default.AddCircle, contentDescription = null) },
+                            label = { Text("新增") },
                         )
                         NavigationBarItem(
                             selected = tab == 3,
@@ -87,16 +89,37 @@ fun AppRoot(viewModel: BabyViewModel) {
             ) { padding ->
                 Box(modifier = Modifier.padding(padding)) {
                     when (tab) {
-                        0 -> EditorPane(
+                        0 -> HomePane(
                             state = state,
-                            onCreate = { type, payload ->
-                                viewModel.createRecord(type, payload)
+                            onRefresh = viewModel::refreshAll,
+                            onQuickAdd = { type ->
+                                val option = com.xiaolai.todo.model.EventTypes.of(type)
+                                if (option.instantConfirm || option.needsAmount || option.needsSide) {
+                                    tab = 2
+                                }
+                                if (option.instantConfirm) {
+                                    viewModel.createRecord(type, JSONObject())
+                                } else {
+                                    tab = 2
+                                }
                             },
+                            onOpenEditor = { tab = 2 },
+                            onOpenTimeline = { tab = 1 },
                         )
-                        1 -> HomePane(state = state, onRefresh = viewModel::refreshAll)
-                        2 -> TimelinePane(
+                        1 -> TimelinePane(
                             state = state,
                             onDateChange = viewModel::setTimelineDate,
+                        )
+                        2 -> EditorPane(
+                            state = state,
+                            onCreate = { type, payload, occurredAt, dateKey ->
+                                viewModel.createRecord(
+                                    eventType = type,
+                                    payload = payload,
+                                    occurredAt = occurredAt,
+                                    dateKey = dateKey,
+                                )
+                            },
                         )
                         3 -> TodosPane(
                             state = state,

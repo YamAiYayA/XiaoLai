@@ -18,6 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -30,6 +31,7 @@ fun AppRoot(viewModel: BabyViewModel) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     // Match miniprogram tab order: 首页 / 记录 / 新增 / 待办 / 我的
     var tab by rememberSaveable { mutableIntStateOf(0) }
+    var showAgeTable by rememberSaveable { mutableStateOf(false) }
 
     when {
         state.booting -> {
@@ -53,86 +55,97 @@ fun AppRoot(viewModel: BabyViewModel) {
         else -> {
             Scaffold(
                 bottomBar = {
-                    NavigationBar {
-                        NavigationBarItem(
-                            selected = tab == 0,
-                            onClick = { tab = 0 },
-                            icon = { Icon(Icons.Default.Home, contentDescription = null) },
-                            label = { Text("首页") },
-                        )
-                        NavigationBarItem(
-                            selected = tab == 1,
-                            onClick = { tab = 1 },
-                            icon = { Icon(Icons.Default.DateRange, contentDescription = null) },
-                            label = { Text("记录") },
-                        )
-                        NavigationBarItem(
-                            selected = tab == 2,
-                            onClick = { tab = 2 },
-                            icon = { Icon(Icons.Default.AddCircle, contentDescription = null) },
-                            label = { Text("新增") },
-                        )
-                        NavigationBarItem(
-                            selected = tab == 3,
-                            onClick = { tab = 3 },
-                            icon = { Icon(Icons.Default.Checklist, contentDescription = null) },
-                            label = { Text("待办") },
-                        )
-                        NavigationBarItem(
-                            selected = tab == 4,
-                            onClick = { tab = 4 },
-                            icon = { Icon(Icons.Default.Person, contentDescription = null) },
-                            label = { Text("我的") },
-                        )
+                    if (!showAgeTable) {
+                        NavigationBar {
+                            NavigationBarItem(
+                                selected = tab == 0,
+                                onClick = { tab = 0 },
+                                icon = { Icon(Icons.Default.Home, contentDescription = null) },
+                                label = { Text("首页") },
+                            )
+                            NavigationBarItem(
+                                selected = tab == 1,
+                                onClick = { tab = 1 },
+                                icon = { Icon(Icons.Default.DateRange, contentDescription = null) },
+                                label = { Text("记录") },
+                            )
+                            NavigationBarItem(
+                                selected = tab == 2,
+                                onClick = { tab = 2 },
+                                icon = { Icon(Icons.Default.AddCircle, contentDescription = null) },
+                                label = { Text("新增") },
+                            )
+                            NavigationBarItem(
+                                selected = tab == 3,
+                                onClick = { tab = 3 },
+                                icon = { Icon(Icons.Default.Checklist, contentDescription = null) },
+                                label = { Text("待办") },
+                            )
+                            NavigationBarItem(
+                                selected = tab == 4,
+                                onClick = { tab = 4 },
+                                icon = { Icon(Icons.Default.Person, contentDescription = null) },
+                                label = { Text("我的") },
+                            )
+                        }
                     }
                 },
             ) { padding ->
                 Box(modifier = Modifier.padding(padding)) {
-                    when (tab) {
-                        0 -> HomePane(
-                            state = state,
-                            onRefresh = viewModel::refreshAll,
-                            onQuickAdd = { type ->
-                                val option = com.xiaolai.todo.model.EventTypes.of(type)
-                                if (option.instantConfirm || option.needsAmount || option.needsSide) {
-                                    tab = 2
-                                }
-                                if (option.instantConfirm) {
-                                    viewModel.createRecord(type, JSONObject())
-                                } else {
-                                    tab = 2
-                                }
-                            },
-                            onOpenEditor = { tab = 2 },
-                            onOpenTimeline = { tab = 1 },
+                    if (showAgeTable) {
+                        AgeCalendarPane(
+                            birthday = state.context?.baby?.birthday.orEmpty(),
+                            nickname = state.context?.baby?.nickname.orEmpty(),
+                            onBack = { showAgeTable = false },
                         )
-                        1 -> TimelinePane(
-                            state = state,
-                            onDateChange = viewModel::setTimelineDate,
-                            onDeleteRecord = viewModel::deleteRecord,
-                        )
-                        2 -> EditorPane(
-                            state = state,
-                            onCreate = { type, payload, occurredAt, dateKey, onDone ->
-                                viewModel.createRecord(
-                                    eventType = type,
-                                    payload = payload,
-                                    occurredAt = occurredAt,
-                                    dateKey = dateKey,
-                                    onDone = onDone,
-                                )
-                            },
-                        )
-                        3 -> TodosPane(
-                            state = state,
-                            onAdd = viewModel::createTodo,
-                            onToggle = viewModel::toggleTodo,
-                        )
-                        else -> ProfilePane(
-                            state = state,
-                            onLogout = viewModel::logout,
-                            onRefresh = viewModel::refreshAll,
-                        )
+                    } else {
+                        when (tab) {
+                            0 -> HomePane(
+                                state = state,
+                                onRefresh = viewModel::refreshAll,
+                                onQuickAdd = { type ->
+                                    val option = com.xiaolai.todo.model.EventTypes.of(type)
+                                    if (option.instantConfirm || option.needsAmount || option.needsSide) {
+                                        tab = 2
+                                    }
+                                    if (option.instantConfirm) {
+                                        viewModel.createRecord(type, JSONObject())
+                                    } else {
+                                        tab = 2
+                                    }
+                                },
+                                onOpenEditor = { tab = 2 },
+                                onOpenTimeline = { tab = 1 },
+                            )
+                            1 -> TimelinePane(
+                                state = state,
+                                onDateChange = viewModel::setTimelineDate,
+                                onDeleteRecord = viewModel::deleteRecord,
+                            )
+                            2 -> EditorPane(
+                                state = state,
+                                onOpenAgeTable = { showAgeTable = true },
+                                onCreate = { type, payload, occurredAt, dateKey, onDone ->
+                                    viewModel.createRecord(
+                                        eventType = type,
+                                        payload = payload,
+                                        occurredAt = occurredAt,
+                                        dateKey = dateKey,
+                                        onDone = onDone,
+                                    )
+                                },
+                            )
+                            3 -> TodosPane(
+                                state = state,
+                                onAdd = viewModel::createTodo,
+                                onToggle = viewModel::toggleTodo,
+                            )
+                            else -> ProfilePane(
+                                state = state,
+                                onLogout = viewModel::logout,
+                                onRefresh = viewModel::refreshAll,
+                            )
+                        }
                     }
                 }
             }

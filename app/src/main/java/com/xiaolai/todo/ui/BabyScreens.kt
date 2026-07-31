@@ -1,6 +1,7 @@
 package com.xiaolai.todo.ui
 
 import android.app.DatePickerDialog
+import androidx.activity.compose.BackHandler
 import android.app.TimePickerDialog
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -22,6 +23,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
@@ -59,6 +61,7 @@ import com.xiaolai.todo.model.EventTypeOption
 import com.xiaolai.todo.model.EventTypes
 import com.xiaolai.todo.model.SummaryCounts
 import com.xiaolai.todo.session.EventTypePrefs
+import com.xiaolai.todo.session.FormulaFavoritesPrefs
 import kotlinx.coroutines.delay
 import org.json.JSONObject
 import java.text.SimpleDateFormat
@@ -160,6 +163,7 @@ fun HomePane(
 @Composable
 fun EditorPane(
     state: BabyUiState,
+    onOpenAgeTable: () -> Unit,
     onCreate: (
         eventType: String,
         payload: JSONObject,
@@ -177,10 +181,10 @@ fun EditorPane(
     var customLabel by rememberSaveable { mutableStateOf("") }
     var forehead by rememberSaveable { mutableStateOf("") }
     var chest by rememberSaveable { mutableStateOf("") }
-    var favorites by remember {
-        mutableStateOf(EventTypes.defaultFormulaFavorites.toMutableList())
-    }
+    val favoritesPrefs = remember { FormulaFavoritesPrefs(context) }
+    var favorites by remember { mutableStateOf(favoritesPrefs.get()) }
     var showMoreAmounts by remember { mutableStateOf(false) }
+    var pendingRemoveFavorite by remember { mutableStateOf<Int?>(null) }
     var pendingInstant by remember { mutableStateOf<EventTypeOption?>(null) }
     var showSuccess by remember { mutableStateOf(false) }
     var successText by remember { mutableStateOf("记录已保存") }
@@ -288,8 +292,17 @@ fun EditorPane(
         item {
             SurfaceCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(modifier = Modifier.weight(1f)) {
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable(onClick = onOpenAgeTable),
+                    ) {
                         Text(summary.babyAgeLabel, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            "点击查看出生天数表",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
                     }
                     Text(
                         selected.label,
@@ -320,42 +333,39 @@ fun EditorPane(
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.Top,
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Column(
-                        modifier = Modifier.weight(1.2f),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        TimeSelectCard(
-                            label = "日期",
-                            value = dateKey,
-                            onClick = { openDatePicker() },
-                        )
-                        TimeSelectCard(
-                            label = "时间",
-                            value = timeLabel,
-                            onClick = { openTimePicker() },
-                        )
-                    }
-                    Column(
+                    TimeSelectCard(
+                        label = "日期",
+                        value = dateKey,
+                        onClick = { openDatePicker() },
                         modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        listOf(1, 3, 5, 10, 15).forEach { minutes ->
-                            OutlinedButton(
-                                onClick = {
-                                    followNow = false
-                                    occurredAt = System.currentTimeMillis() - minutes * 60_000L
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
-                            ) { Text("${minutes}分钟前") }
-                        }
-                        Button(
-                            onClick = { followNow = true },
-                            modifier = Modifier.fillMaxWidth(),
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
-                        ) { Text("现在") }
+                    )
+                    TimeSelectCard(
+                        label = "时间",
+                        value = timeLabel,
+                        onClick = { openTimePicker() },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                Spacer(modifier = Modifier.height(10.dp))
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    listOf(1, 3, 5, 10, 15).forEach { minutes ->
+                        OutlinedButton(
+                            onClick = {
+                                followNow = false
+                                occurredAt = System.currentTimeMillis() - minutes * 60_000L
+                            },
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                        ) { Text("${minutes}分钟前") }
                     }
+                    Button(
+                        onClick = { followNow = true },
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                    ) { Text("现在") }
                 }
             }
         }
@@ -409,10 +419,11 @@ fun EditorPane(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         favorites.forEach { value ->
-                            FilterChip(
+                            AmountFavoriteChip(
+                                value = value,
                                 selected = amount == value.toString(),
                                 onClick = { amount = value.toString() },
-                                label = { Text("${value}ml") },
+                                onLongClick = { pendingRemoveFavorite = value },
                             )
                         }
                         AssistChip(
@@ -421,7 +432,7 @@ fun EditorPane(
                         )
                     }
                     Text(
-                        "点“更多”可选 20~200ml（每 5ml）。",
+                        "点「更多」可把奶量移到常驻；长按常驻可移回更多。",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                     )
@@ -437,9 +448,7 @@ fun EditorPane(
                                     AssistChip(
                                         onClick = {
                                             amount = value.toString()
-                                            if (favorites.size < 9 && value !in favorites) {
-                                                favorites = (favorites + value).sorted().toMutableList()
-                                            }
+                                            favorites = favoritesPrefs.add(value)
                                             showMoreAmounts = false
                                         },
                                         label = { Text("${value}ml") },
@@ -519,25 +528,30 @@ fun EditorPane(
         }
 
         item {
-            Button(
-                onClick = { save(selected, instant = false) },
-                enabled = !state.loading,
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-            ) { Text("保存记录") }
-            OutlinedButton(
-                onClick = {
-                    amount = "40"
-                    side = "left"
-                    durationMin = "15"
-                    note = ""
-                    customLabel = ""
-                    forehead = ""
-                    chest = ""
-                    followNow = true
-                    selected = visibleTypes.firstOrNull() ?: EventTypes.all.first()
-                },
-                modifier = Modifier.fillMaxWidth(),
-            ) { Text("清空重写") }
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Button(
+                    onClick = { save(selected, instant = false) },
+                    enabled = !state.loading,
+                    modifier = Modifier.weight(1f),
+                ) { Text("保存记录") }
+                OutlinedButton(
+                    onClick = {
+                        amount = favorites.firstOrNull()?.toString() ?: "40"
+                        side = "left"
+                        durationMin = "15"
+                        note = ""
+                        customLabel = ""
+                        forehead = ""
+                        chest = ""
+                        followNow = true
+                        selected = visibleTypes.firstOrNull() ?: EventTypes.all.first()
+                    },
+                    modifier = Modifier.weight(1f),
+                ) { Text("清空重写") }
+            }
             if (state.message.isNotBlank()) {
                 Text(state.message, color = MaterialTheme.colorScheme.primary)
             }
@@ -592,6 +606,151 @@ fun EditorPane(
             },
         )
     }
+
+    pendingRemoveFavorite?.let { value ->
+        AlertDialog(
+            onDismissRequest = { pendingRemoveFavorite = null },
+            title = { Text("移出常驻奶量？") },
+            text = { Text("将 ${value}ml 从常驻移回「更多」。") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        favorites = favoritesPrefs.remove(value)
+                        pendingRemoveFavorite = null
+                    },
+                ) { Text("移出") }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingRemoveFavorite = null }) { Text("取消") }
+            },
+        )
+    }
+}
+
+
+@Composable
+fun AgeCalendarPane(
+    birthday: String,
+    nickname: String,
+    onBack: () -> Unit,
+) {
+    BackHandler(onBack = onBack)
+    val rows = remember(birthday) { buildAgeTableRows(birthday) }
+    val listState = rememberLazyListState()
+    LaunchedEffect(rows.size) {
+        if (rows.isNotEmpty()) {
+            listState.scrollToItem(rows.lastIndex.coerceAtLeast(0))
+        }
+    }
+    Column(modifier = Modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TextButton(onClick = onBack) { Text("返回") }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    if (nickname.isBlank()) "出生天数表" else "${nickname}出生天数表",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    if (birthday.isBlank()) "未设置生日" else "生日 $birthday",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                )
+            }
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surface)
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+        ) {
+            Text("日期", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1.2f))
+            Text("出生天数", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+            Text("月日", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
+        }
+        if (rows.isEmpty()) {
+            Box(modifier = Modifier.padding(16.dp)) {
+                EmptyCard("暂无数据", "请先在家庭资料里设置宝宝生日。")
+            }
+        } else {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(0.dp),
+            ) {
+                items(rows, key = { it.dateKey }) { row ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(row.dateKey, modifier = Modifier.weight(1.2f))
+                        Text("${row.dayIndex}天", modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+                        Text(row.monthDayLabel, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
+                    }
+                }
+            }
+        }
+    }
+}
+
+private data class AgeTableRow(
+    val dateKey: String,
+    val dayIndex: Int,
+    val monthDayLabel: String,
+)
+
+private fun buildAgeTableRows(birthday: String): List<AgeTableRow> {
+    val fmt = SimpleDateFormat("yyyy-MM-dd", Locale.CHINA)
+    val birthDate = runCatching { fmt.parse(birthday) }.getOrNull() ?: return emptyList()
+    val birth = Calendar.getInstance().apply {
+        time = birthDate
+        set(Calendar.HOUR_OF_DAY, 0)
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+    }
+    val today = Calendar.getInstance().apply {
+        set(Calendar.HOUR_OF_DAY, 0)
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+    }
+    if (birth.after(today)) return emptyList()
+    val rows = mutableListOf<AgeTableRow>()
+    val cursor = birth.clone() as Calendar
+    var dayIndex = 0
+    while (!cursor.after(today)) {
+        val (months, days) = calendarAgeMonthsDays(birth, cursor)
+        rows += AgeTableRow(
+            dateKey = fmt.format(cursor.time),
+            dayIndex = dayIndex,
+            monthDayLabel = "${months}月${days}天",
+        )
+        cursor.add(Calendar.DAY_OF_MONTH, 1)
+        dayIndex++
+        if (dayIndex > 5000) break
+    }
+    return rows
+}
+
+private fun calendarAgeMonthsDays(birth: Calendar, target: Calendar): Pair<Int, Int> {
+    var months = (target.get(Calendar.YEAR) - birth.get(Calendar.YEAR)) * 12 +
+        (target.get(Calendar.MONTH) - birth.get(Calendar.MONTH))
+    var days = target.get(Calendar.DAY_OF_MONTH) - birth.get(Calendar.DAY_OF_MONTH)
+    if (days < 0) {
+        months -= 1
+        val prevMonth = (target.clone() as Calendar).apply { add(Calendar.MONTH, -1) }
+        days += prevMonth.getActualMaximum(Calendar.DAY_OF_MONTH)
+    }
+    return months.coerceAtLeast(0) to days.coerceAtLeast(0)
 }
 
 @Composable
@@ -599,9 +758,10 @@ private fun TimeSelectCard(
     label: String,
     value: String,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
             .border(
@@ -927,6 +1087,39 @@ private fun RecordRow(record: BabyRecord) {
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
         )
     }
+}
+
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun AmountFavoriteChip(
+    value: Int,
+    selected: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+) {
+    val bg = if (selected) {
+        MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
+    } else {
+        MaterialTheme.colorScheme.surface
+    }
+    val border = if (selected) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.18f)
+    }
+    Text(
+        text = "${value}ml",
+        modifier = Modifier
+            .clip(RoundedCornerShape(999.dp))
+            .border(1.dp, border, RoundedCornerShape(999.dp))
+            .background(bg)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+        textAlign = TextAlign.Center,
+    )
 }
 
 @OptIn(ExperimentalFoundationApi::class)

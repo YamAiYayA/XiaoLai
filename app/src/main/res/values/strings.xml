@@ -5,4 +5,11 @@
     <string name="widget_description">在桌面查看和勾选待办</string>
     <string name="widget_empty">暂无待办，打开 App 添加</string>
     <string name="widget_open_app">打开 App</string>
+
+    <string name="shortcut_new_todo_short">新建待办</string>
+    <string name="shortcut_new_todo_long">快速新建一条待办</string>
+    <string name="shortcut_open_todos_short">待办列表</string>
+    <string name="shortcut_open_todos_long">打开待办列表</string>
+    <string name="shortcut_timer_short">提示音测试</string>
+    <string name="shortcut_timer_long">打开倒计时提示音测试</string>
 </resources>

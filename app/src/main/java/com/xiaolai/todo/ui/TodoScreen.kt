@@ -36,13 +36,18 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextDecoration
@@ -55,9 +60,21 @@ import com.xiaolai.todo.data.Todo
 fun TodoScreen(
     viewModel: TodoViewModel,
     modifier: Modifier = Modifier,
+    requestFocusComposer: Boolean = false,
+    onFocusComposerHandled: () -> Unit = {},
 ) {
     val todos by viewModel.todos.collectAsStateWithLifecycle()
     var draft by rememberSaveable { mutableStateOf("") }
+    val focusRequester = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
+
+    LaunchedEffect(requestFocusComposer) {
+        if (requestFocusComposer) {
+            focusRequester.requestFocus()
+            keyboard?.show()
+            onFocusComposerHandled()
+        }
+    }
 
     fun submit() {
         viewModel.add(draft)
@@ -101,7 +118,9 @@ fun TodoScreen(
                 OutlinedTextField(
                     value = draft,
                     onValueChange = { draft = it },
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .focusRequester(focusRequester),
                     placeholder = { Text("添加一件待办…") },
                     singleLine = true,
                     shape = RoundedCornerShape(16.dp),

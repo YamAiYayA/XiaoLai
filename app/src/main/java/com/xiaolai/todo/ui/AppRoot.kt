@@ -10,8 +10,10 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -19,9 +21,16 @@ import androidx.compose.ui.Modifier
 @Composable
 fun AppRoot(
     todoViewModel: TodoViewModel,
-    initialTab: Int = 0,
+    launchTarget: LaunchTarget,
+    onLaunchTargetConsumed: () -> Unit = {},
 ) {
-    var tab by rememberSaveable { mutableIntStateOf(initialTab) }
+    var tab by rememberSaveable { mutableIntStateOf(launchTarget.tab) }
+    var focusComposer by rememberSaveable { mutableStateOf(launchTarget.focusComposer) }
+
+    LaunchedEffect(launchTarget) {
+        tab = launchTarget.tab
+        focusComposer = launchTarget.focusComposer
+    }
 
     Scaffold(
         bottomBar = {
@@ -45,6 +54,11 @@ fun AppRoot(
             0 -> TodoScreen(
                 viewModel = todoViewModel,
                 modifier = Modifier.padding(padding),
+                requestFocusComposer = focusComposer,
+                onFocusComposerHandled = {
+                    focusComposer = false
+                    onLaunchTargetConsumed()
+                },
             )
             else -> TimerTestScreen(modifier = Modifier.padding(padding))
         }

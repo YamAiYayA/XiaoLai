@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <shortcut
+        android:shortcutId="new_todo"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_add"
+        android:shortcutShortLabel="@string/shortcut_new_todo_short"
+        android:shortcutLongLabel="@string/shortcut_new_todo_long">
+        <intent
+            android:action="com.xiaolai.todo.action.NEW_TODO"
+            android:targetPackage="com.xiaolai.todo"
+            android:targetClass="com.xiaolai.todo.MainActivity" />
+    </shortcut>
+
+    <shortcut
+        android:shortcutId="open_todos"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_list"
+        android:shortcutShortLabel="@string/shortcut_open_todos_short"
+        android:shortcutLongLabel="@string/shortcut_open_todos_long">
+        <intent
+            android:action="com.xiaolai.todo.action.OPEN_TODOS"
+            android:targetPackage="com.xiaolai.todo"
+            android:targetClass="com.xiaolai.todo.MainActivity" />
+    </shortcut>
+
+    <shortcut
+        android:shortcutId="timer_test"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_alarm"
+        android:shortcutShortLabel="@string/shortcut_timer_short"
+        android:shortcutLongLabel="@string/shortcut_timer_long">
+        <intent
+            android:action="com.xiaolai.todo.action.OPEN_TIMER"
+            android:targetPackage="com.xiaolai.todo"
+            android:targetClass="com.xiaolai.todo.MainActivity" />
+    </shortcut>
+
+</shortcuts>

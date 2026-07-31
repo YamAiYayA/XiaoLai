@@ -13,8 +13,8 @@ android {
         applicationId = "com.xiaolai.todo"
         minSdk = 26
         targetSdk = 35
-        versionCode = 10
-        versionName = "0.5.5"
+        versionCode = 11
+        versionName = "0.5.6"
     }
 
     buildTypes {

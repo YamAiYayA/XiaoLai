@@ -104,16 +104,12 @@ fun HomePane(
             Text("今天概览", fontWeight = FontWeight.SemiBold)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                 StatCard("奶粉总量", "${today.formulaAmountTotal.toInt()}ml", Modifier.weight(1f))
-                StatCard(
-                    "喂养次数",
-                    "${today.formulaFeedCount + today.breastFeedCount}次",
-                    Modifier.weight(1f),
-                )
+                StatCard("热母乳", "${today.warmBreastAmountTotal.toInt()}ml", Modifier.weight(1f))
             }
             Spacer(modifier = Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                StatCard("喂养次数", "${today.feedCountTotal}次", Modifier.weight(1f))
                 StatCard("排便次数", "${today.poopCount}次", Modifier.weight(1f))
-                StatCard("护理/洗澡", "${today.careCount + today.bathCount}次", Modifier.weight(1f))
             }
         }
         item {
@@ -149,6 +145,19 @@ fun HomePane(
                 StatCard(
                     "奶粉总量",
                     "${state.dashboard.weekSummary.formulaAmountTotal.toInt()}ml",
+                    Modifier.weight(1f),
+                )
+                StatCard(
+                    "热母乳",
+                    "${state.dashboard.weekSummary.warmBreastAmountTotal.toInt()}ml",
+                    Modifier.weight(1f),
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                StatCard(
+                    "喂养次数",
+                    "${state.dashboard.weekSummary.feedCountTotal}次",
                     Modifier.weight(1f),
                 )
                 StatCard(
@@ -1010,15 +1019,15 @@ fun TimelinePane(
             Text(if (viewMode == "day") "当天汇总" else "近 7 天汇总", fontWeight = FontWeight.SemiBold)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                 StatCard("奶粉总量", "${summary.formulaAmountTotal.toInt()}ml", Modifier.weight(1f))
-                StatCard(
-                    "喂养次数",
-                    "${summary.formulaFeedCount + summary.breastFeedCount}次",
-                    Modifier.weight(1f),
-                )
+                StatCard("热母乳", "${summary.warmBreastAmountTotal.toInt()}ml", Modifier.weight(1f))
             }
             Spacer(modifier = Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                StatCard("喂养次数", "${summary.feedCountTotal}次", Modifier.weight(1f))
                 StatCard("排便", "${summary.poopCount}次", Modifier.weight(1f))
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                 StatCard("总记录", "${summary.totalCount}条", Modifier.weight(1f))
             }
         }
@@ -1439,6 +1448,8 @@ private fun elapsedLabel(ms: Long): String {
 private fun summarize(records: List<BabyRecord>): SummaryCounts {
     var formulaAmount = 0.0
     var formulaCount = 0
+    var warmBreastAmount = 0.0
+    var warmBreastCount = 0
     var breastCount = 0
     var poop = 0
     var care = 0
@@ -1451,7 +1462,11 @@ private fun summarize(records: List<BabyRecord>): SummaryCounts {
                 formulaCount++
                 formulaAmount += record.payload.optDouble("amountMl")
             }
-            "feeding_breast", "feeding_warm_breast" -> breastCount++
+            "feeding_warm_breast" -> {
+                warmBreastCount++
+                warmBreastAmount += record.payload.optDouble("amountMl")
+            }
+            "feeding_breast" -> breastCount++
             "poop" -> poop++
             "care", "butt_clean", "pee_clean" -> care++
             "bath" -> bath++
@@ -1462,6 +1477,8 @@ private fun summarize(records: List<BabyRecord>): SummaryCounts {
     return SummaryCounts(
         formulaAmountTotal = formulaAmount,
         formulaFeedCount = formulaCount,
+        warmBreastAmountTotal = warmBreastAmount,
+        warmBreastFeedCount = warmBreastCount,
         breastFeedCount = breastCount,
         poopCount = poop,
         careCount = care,

@@ -87,6 +87,8 @@ function summarize_records(array $records): array
     $summary = [
         'formulaAmountTotal' => 0,
         'formulaFeedCount' => 0,
+        'warmBreastAmountTotal' => 0,
+        'warmBreastFeedCount' => 0,
         'breastFeedCount' => 0,
         'poopCount' => 0,
         'careCount' => 0,
@@ -108,7 +110,10 @@ function summarize_records(array $records): array
         if ($type === 'feeding_formula') {
             $summary['formulaFeedCount']++;
             $summary['formulaAmountTotal'] += (float)($payload['amountMl'] ?? 0);
-        } elseif ($type === 'feeding_breast' || $type === 'feeding_warm_breast') {
+        } elseif ($type === 'feeding_warm_breast') {
+            $summary['warmBreastFeedCount']++;
+            $summary['warmBreastAmountTotal'] += (float)($payload['amountMl'] ?? 0);
+        } elseif ($type === 'feeding_breast') {
             $summary['breastFeedCount']++;
         } elseif ($type === 'poop') {
             $summary['poopCount']++;

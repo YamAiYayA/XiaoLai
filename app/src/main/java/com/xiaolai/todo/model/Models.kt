@@ -84,6 +84,8 @@ data class AppContextData(
 data class SummaryCounts(
     val formulaAmountTotal: Double = 0.0,
     val formulaFeedCount: Int = 0,
+    val warmBreastAmountTotal: Double = 0.0,
+    val warmBreastFeedCount: Int = 0,
     val breastFeedCount: Int = 0,
     val poopCount: Int = 0,
     val careCount: Int = 0,
@@ -92,10 +94,15 @@ data class SummaryCounts(
     val bathCount: Int = 0,
     val totalCount: Int = 0,
 ) {
+    val feedCountTotal: Int
+        get() = formulaFeedCount + warmBreastFeedCount + breastFeedCount
+
     companion object {
         fun fromJson(json: JSONObject?) = SummaryCounts(
             formulaAmountTotal = json?.optDouble("formulaAmountTotal") ?: 0.0,
             formulaFeedCount = json?.optInt("formulaFeedCount") ?: 0,
+            warmBreastAmountTotal = json?.optDouble("warmBreastAmountTotal") ?: 0.0,
+            warmBreastFeedCount = json?.optInt("warmBreastFeedCount") ?: 0,
             breastFeedCount = json?.optInt("breastFeedCount") ?: 0,
             poopCount = json?.optInt("poopCount") ?: 0,
             careCount = json?.optInt("careCount") ?: 0,

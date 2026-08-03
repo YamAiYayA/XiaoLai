@@ -13,13 +13,26 @@ android {
         applicationId = "com.xiaolai.todo"
         minSdk = 26
         targetSdk = 35
-        versionCode = 12
-        versionName = "0.5.7"
+        versionCode = 13
+        versionName = "0.5.8"
+    }
+
+    signingConfigs {
+        create("xiaolai") {
+            storeFile = file("signing/xiaolai.jks")
+            storePassword = "xiaolai2026"
+            keyAlias = "xiaolai"
+            keyPassword = "xiaolai2026"
+        }
     }
 
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("xiaolai")
+        }
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("xiaolai")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

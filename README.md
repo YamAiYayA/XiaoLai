@@ -17,3 +17,12 @@
 ## APK 命名规则
 
 每次更新产物命名为：`XBB` + 版本号，例如 `XBB0.5.8.apk`
+
+
+## 网页版（给 iPhone / 媳妇用）
+
+- 源码：`web/yanyan/`
+- 部署包：`dist/yanyan-web.zip`
+- 目标目录：`C:/wwwroot/api.guoziai.com/yanyan`
+- 访问：`https://api.guoziai.com/yanyan/`
+- 登录：成员 Token，或邀请码 + 称呼

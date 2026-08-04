@@ -86,22 +86,66 @@
     return `${minutes}分钟`;
   }
 
+  function setCookie(name, value, days = 365) {
+    const maxAge = days * 24 * 60 * 60;
+    document.cookie = `${encodeURIComponent(name)}=${encodeURIComponent(value)}; path=/yanyan; max-age=${maxAge}; SameSite=Lax`;
+    // also set on root path in case site is opened without trailing rules
+    document.cookie = `${encodeURIComponent(name)}=${encodeURIComponent(value)}; path=/; max-age=${maxAge}; SameSite=Lax`;
+  }
+
+  function getCookie(name) {
+    const key = `${encodeURIComponent(name)}=`;
+    const parts = document.cookie.split(";");
+    for (const part of parts) {
+      const item = part.trim();
+      if (item.startsWith(key)) {
+        return decodeURIComponent(item.slice(key.length));
+      }
+    }
+    return "";
+  }
+
+  function clearCookie(name) {
+    document.cookie = `${encodeURIComponent(name)}=; path=/yanyan; max-age=0; SameSite=Lax`;
+    document.cookie = `${encodeURIComponent(name)}=; path=/; max-age=0; SameSite=Lax`;
+  }
+
   function loadSession() {
     try {
-      return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
-    } catch {
-      return {};
-    }
+      const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+      if (raw && raw.token) return raw;
+    } catch {}
+    const token = getCookie("yanyan_token");
+    const displayName = getCookie("yanyan_name");
+    if (token) return { token, displayName };
+    return {};
   }
 
   function saveSession() {
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({
-        token: state.token,
-        displayName: state.displayName,
-      }),
-    );
+    const payload = {
+      token: state.token,
+      displayName: state.displayName,
+    };
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    } catch {}
+    if (state.token) {
+      setCookie("yanyan_token", state.token, 365);
+      setCookie("yanyan_name", state.displayName || "", 365);
+    }
+  }
+
+  function clearSession() {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {}
+    clearCookie("yanyan_token");
+    clearCookie("yanyan_name");
+  }
+
+  function isAuthError(message) {
+    const text = String(message || "");
+    return /登录|token|未授权|失效|无权限|请先登录/i.test(text);
   }
 
   function loadFavorites() {
@@ -221,14 +265,22 @@
       state.token = saved.token;
       state.displayName = saved.displayName || "";
       state.context = await api("bootstrap/context");
+      // refresh cookie/localStorage expiry on successful auto-login
+      saveSession();
       await refreshAll();
       state.booting = false;
       render();
     } catch (e) {
-      state.token = "";
-      state.context = null;
       state.booting = false;
-      setMessage(e.message || "登录失效，请重新登录", true);
+      if (isAuthError(e.message)) {
+        state.token = "";
+        state.context = null;
+        clearSession();
+        setMessage(e.message || "登录失效，请重新登录", true);
+      } else {
+        // 网络抖动时保留登录态，避免每次进来都要重新登录
+        setMessage(e.message || "网络异常，请下拉刷新重试", true);
+      }
       render();
     }
   }
@@ -317,7 +369,7 @@
     state.dashboard = null;
     state.timeline = [];
     state.todos = [];
-    localStorage.removeItem(STORAGE_KEY);
+    clearSession();
     setMessage("已退出");
     render();
   }
@@ -454,7 +506,7 @@
           }
           ${state.error ? `<div class="msg error">${esc(state.error)}</div>` : ""}
           ${state.message ? `<div class="msg">${esc(state.message)}</div>` : ""}
-          <p class="tiny" style="margin-top:12px">建议在 iPhone 上用 Safari 打开，点分享 → 添加到主屏幕，用起来更像 App。</p>
+          <p class="tiny" style="margin-top:12px">登录一次会自动记住（约一年）。请用 <b>Safari</b> 打开，不要用微信内置浏览器；再点「分享 → 添加到主屏幕」，以后从桌面进就不用反复登录。</p>
         </div>
       </div>
     `;
@@ -807,8 +859,24 @@
       app.innerHTML = `<div class="shell"><div class="empty">加载中…</div></div>`;
       return;
     }
-    if (!state.token || !state.context) {
+    if (!state.token) {
       app.innerHTML = renderLogin() + renderModal();
+      bind();
+      return;
+    }
+    if (!state.context) {
+      app.innerHTML = `
+        <div class="shell">
+          <div class="brand" style="font-size:1.7rem">妍妍养成记</div>
+          <div class="card">
+            <div class="empty">已记住登录，但这次没连上服务器。</div>
+            ${state.error ? `<div class="msg error">${esc(state.error)}</div>` : ""}
+            <button class="btn block" data-action="retry-boot">重新连接</button>
+            <div style="height:8px"></div>
+            <button class="btn secondary block" data-action="logout">退出登录</button>
+          </div>
+        </div>
+      ` + renderModal();
       bind();
       return;
     }
@@ -846,6 +914,10 @@
       if (action === "login-mode") {
         state.loginMode = el.dataset.mode;
         render();
+        return;
+      }
+      if (action === "retry-boot") {
+        await bootstrap();
         return;
       }
       if (action === "login-token") {

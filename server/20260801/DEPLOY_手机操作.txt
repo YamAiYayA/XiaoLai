@@ -1,0 +1,29 @@
+宝宝记录 · 服务器部署（手机宝塔操作）
+
+1) 手机下载本目录压缩包 baby-api-20260801.zip
+   （在 GitHub 仓库 server/ 或 dist/ 里）
+
+2) 打开宝塔面板 → 文件 → 进入
+   C:\wwwroot\api.guoziai.com\20260801
+
+3) 上传 baby-api-20260801.zip 并解压到当前目录
+   解压后应能看到：
+   install.php
+   index.php
+   schema.sql
+   data\（里面有 json）
+
+4) 手机浏览器打开：
+   https://api.guoziai.com/20260801/install.php
+
+5) 填写数据库（一般默认即可）：
+   主机 127.0.0.1
+   库名 GuoZY
+   用户 GuoZY
+   密码：你建库时设置的密码
+
+6) 点「开始建表并导入数据」
+   成功后页面会显示 爸爸 / 妈妈 / 胡月嫂 的登录口令 token
+
+7) 安装新版 App，用对应 token 登录
+   邀请码也可：46XSCU + 称呼（爸爸/妈妈/胡月嫂）

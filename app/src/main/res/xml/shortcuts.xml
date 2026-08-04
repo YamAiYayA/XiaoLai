@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <shortcut
+        android:shortcutId="quick_feed"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_add"
+        android:shortcutShortLabel="@string/shortcut_quick_feed_short"
+        android:shortcutLongLabel="@string/shortcut_quick_feed_long">
+        <intent
+            android:action="com.xiaolai.todo.action.QUICK_FEED"
+            android:targetPackage="com.xiaolai.todo"
+            android:targetClass="com.xiaolai.todo.MainActivity" />
+    </shortcut>
+
+    <shortcut
+        android:shortcutId="quick_diaper"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_list"
+        android:shortcutShortLabel="@string/shortcut_quick_diaper_short"
+        android:shortcutLongLabel="@string/shortcut_quick_diaper_long">
+        <intent
+            android:action="com.xiaolai.todo.action.QUICK_DIAPER"
+            android:targetPackage="com.xiaolai.todo"
+            android:targetClass="com.xiaolai.todo.MainActivity" />
+    </shortcut>
+
+</shortcuts>

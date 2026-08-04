@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">妍妍养成记</string>
+    <string name="widget_name">妍妍养成记</string>
+    <string name="widget_description">桌面查看上次吃奶时间和奶量</string>
+    <string name="widget_empty">暂无吃奶记录</string>
+    <string name="widget_open_app">打开 App</string>
+
+    <string name="shortcut_quick_feed_short">快捷新增吃奶</string>
+    <string name="shortcut_quick_feed_long">打开新增页记录吃奶</string>
+    <string name="shortcut_quick_diaper_short">快捷换尿不湿</string>
+    <string name="shortcut_quick_diaper_long">立刻记录一次更换尿不湿</string>
+</resources>
